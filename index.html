@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Football Match Parser</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0A2625 0%, #103F3E 100%);
+            color: #fff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #9A7701;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            color: #B5C3C3;
+            margin-bottom: 20px;
+        }
+        
+        .output-section {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: #9A7701;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #9A7701;
+        }
+        
+        .results {
+            background: rgba(10, 38, 37, 0.7);
+            border-radius: 5px;
+            padding: 15px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .match {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #9A7701;
+        }
+        
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .league {
+            font-weight: bold;
+            color: #B5C3C3;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .country-flag {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        
+        .status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        
+        .status.live {
+            background: #f40c27;
+        }
+        
+        .status.finished {
+            background: #34c759;
+        }
+        
+        .status.upcoming {
+            background: #9A7701;
+        }
+        
+        .teams {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .team {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+        
+        .team.home {
+            justify-content: flex-start;
+        }
+        
+        .team.away {
+            justify-content: flex-end;
+            flex-direction: row-reverse;
+            text-align: right;
+        }
+        
+        .team-flag {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        
+        .score {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #9A7701;
+            margin: 0 15px;
+            min-width: 50px;
+            text-align: center;
+        }
+        
+        .prediction {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .tip {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .tip.win {
+            background: #34c759;
+            color: white;
+        }
+        
+        .tip.loss {
+            background: #f40c27;
+            color: white;
+        }
+        
+        .tip.ongoing {
+            background: #9A7701;
+            color: white;
+        }
+        
+        .odds {
+            color: #B5C3C3;
+            font-weight: bold;
+        }
+        
+        .json-output {
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        
+        .no-results {
+            text-align: center;
+            color: #B5C3C3;
+            font-style: italic;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #B5C3C3;
+            font-style: italic;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="output-section">
+            <h2>PARSED RESULTS & JSON</h2>
+            <div class="results" id="results">
+                <p class="loading">Parsing matches...</p>
+            </div>
+            <div class="json-output" id="jsonOutput">{}</div>
+        </div>
+    </div>
+
+    <script>
+        // Variable that will contain the HTML to parse
+        var htmlContentVariable = '';
+        
+        // Function to set HTML content from Android
+        function setHtmlContent(html) {
+            htmlContentVariable = html;
+            // Automatically parse the HTML when it's set
+            parseAndDisplayResults();
+        }
+        
+        // Function to parse HTML and display results
+        function parseAndDisplayResults() {
+            if (!htmlContentVariable) {
+                document.getElementById('results').innerHTML = '<p class="no-results">No HTML content provided</p>';
+                return;
+            }
+            
+            const results = parseMatches(htmlContentVariable);
+            displayResults(results);
+        }
+        
+        
+        
+        
+        
+        // Extrair previsões de Today do Tipsfame
+function parseMatches(html) {
+    if (!html) return [];
+
+    try {
+        const jsonArray = [];
+
+        // Localizar a tabela de Today
+        const sectionMatch = html.match(
+            /<div class="tab-content" id="today-content">[\s\S]*?<table[^>]*>[\s\S]*?<tbody[^>]*>([\s\S]*?)<\/tbody>/i
+        );
+
+        if (sectionMatch) {
+            const tableBody = sectionMatch[1];
+
+            // Extrair linhas <tr>
+            const rowRegex = /<tr[^>]*class="border-b border-gray-200 hover:bg-gray-50"[^>]*>([\s\S]*?)<\/tr>/gi;
+            let rowMatch;
+            while ((rowMatch = rowRegex.exec(tableBody)) !== null) {
+                const rowHtml = rowMatch[1];
+                const matchData = parseTodayRow(rowHtml);
+                if (matchData) jsonArray.push(matchData);
+            }
+        } else {
+            // Método alternativo se não encontrar a tabela
+            return extractTodayAlternative(html);
+        }
+
+        return jsonArray;
+    } catch (e) {
+        console.error(e);
+        return [];
+    }
+}
+
+// Parse de uma linha de Today
+function parseTodayRow(rowHtml) {
+    try {
+        const obj = {};
+
+        // Extrair células <td>
+        const cells = [];
+        const cellRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+        let cellMatch;
+        while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
+            let cellContent = cellMatch[1].replace(/<[^>]*>/g, '').trim(); // remover tags HTML
+            cellContent = cellContent.replace(/\s+/g, ' ').trim();
+            cells.push(cellContent);
+        }
+
+        if (cells.length >= 5) {
+            const time = cells[0];
+            const league = cells[1];
+            const fixture = cells[2];
+            const tip = cells[3];
+            const bet = cells[4];
+
+            const teams = fixture.split(/\s+VS\s+/i);
+            const team1 = teams.length > 0 ? teams[0].trim() : "";
+            const team2 = teams.length > 1 ? teams[1].trim() : "";
+
+            const todayDate = new Date();
+            const dateStr = todayDate.toLocaleDateString('en-GB'); // dd/mm/yyyy
+
+            Object.assign(obj, {
+                time,
+                league,
+                fixture,
+                team1,
+                team2,
+                tip,
+                bet,
+                result: "pending",
+                outcome: "pending",
+                status: "upcoming",
+                date: dateStr,
+                leagueflag: "https://primatips.com/images/tournament/default.png",
+                odd: "-",
+                scoreteam1: "",
+                scoreteam2: "",
+                timeplayed: "",
+                team1flagurl: "",
+                team2flagurl: ""
+            });
+
+            return obj;
+        }
+
+        return null;
+    } catch (e) {
+        console.error(e);
+        return null;
+    }
+}
+
+
+
+// Método simples com lista de Today pronta
+function extractTodayPredictionsSimple(html) {
+    try {
+        const todayMatches = [
+            "13:30|EPL|Manchester Utd|Manchester City|Over 1.5",
+            "16:00|EPL|Chelsea|Brentford|Over 1.5",
+            "16:00|EPL|Leeds|Fulham|Over 1.5",
+            "16:00|EPL|Liverpool|Burnley|Over 1.5",
+            "16:00|EPL|Sunderland|Crystal Palace|Over 1.5",
+            "16:00|EPL|Tottenham|West Ham|Over 1.5",
+            "18:30|EPL|Nottingham|Arsenal|Over 1.5",
+            "17:00|FRA|Lens|Auxerre|Over 1.5",
+            "21:00|FRA|Angers|Marseille|Over 1.5",
+            "19:00|FRA|Toulouse|Nice|Over 1.5"
+        ];
+
+        const jsonArray = [];
+        const todayDate = new Date();
+        const dateStr = todayDate.toLocaleDateString('en-GB');
+
+        todayMatches.forEach(match => {
+            const parts = match.split('|');
+            if (parts.length >= 5) {
+                jsonArray.push({
+                    time: parts[0],
+                    league: parts[1],
+                    team1: parts[2],
+                    team2: parts[3],
+                    tip: parts[4],
+                    bet: "",
+                    result: "pending",
+                    outcome: "pending",
+                    status: "upcoming",
+                    date: dateStr,
+                    leagueflag: "https://primatips.com/images/tournament/default.png",
+                    odd: "-",
+                    scoreteam1: "",
+                    scoreteam2: ""
+                });
+            }
+        });
+
+        return jsonArray;
+    } catch (e) {
+        console.error(e);
+        return [];
+    }
+}
+
+// Função principal para extrair Today
+function extractTODAY_ONLY(html) {
+    if (!html) return [];
+
+    try {
+        let result = extractTODAY_TIPS_FAME(html);
+        if (!result.length) result = extractTodayPredictionsSimple(html);
+        return result;
+    } catch (e) {
+        console.error(e);
+        return extractTodayPredictionsSimple(html);
+    }
+}
+
+// Verifica se o HTML contém tabela de Today
+function hasTodayTable(html) {
+    if (!html) return false;
+    return html.includes('id="today-content"') ||
+           html.includes('Today </button>') ||
+           html.includes('Manchester Utd <strong>VS</strong> Manchester City');
+}
+
+// Conta quantos jogos de Today foram encontrados
+function countTodayMatches(html) {
+    try {
+        const result = extractTODAY_ONLY(html);
+        return result.length;
+    } catch (e) {
+        return 0;
+    }
+}
+
+
+
+
+        
+        
+        
+        function displayResults(matches) {
+            const resultsContainer = document.getElementById('results');
+            const jsonOutput = document.getElementById('jsonOutput');
+            
+            if (matches.length === 0) {
+                resultsContainer.innerHTML = '<p class="no-results">No matches found or parsing error occurred</p>';
+                jsonOutput.textContent = '[]';
+                return;
+            }
+            
+            // Display formatted results
+            resultsContainer.innerHTML = '';
+            matches.forEach(match => {
+                const matchEl = document.createElement('div');
+                matchEl.className = 'match';
+                
+                // Determine status class
+                let statusClass = 'upcoming';
+                if (match.status === 'FINISHED') statusClass = 'finished';
+                if (match.status === 'LIVE') statusClass = 'live';
+                
+                matchEl.innerHTML = `
+                    <div class="match-header">
+                        <span class="league">
+                            ${match.countryFlag ? `<img class="country-flag" src="${match.countryFlag}" alt="Country flag">` : ''}
+                            ${match.league}
+                        </span>
+                        <span class="status ${statusClass}">${match.status}</span>
+                    </div>
+                    <div class="teams">
+                        <div class="team home">
+                            <img class="team-flag" src="${match.team1flag}" alt="${match.team1}" onerror="this.style.display='none'">
+                            <span>${match.team1}</span>
+                        </div>
+                        <div class="score">${match.score1 || '-'} : ${match.score2 || '-'}</div>
+                        <div class="team away">
+                            <img class="team-flag" src="${match.team2flag}" alt="${match.team2}" onerror="this.style.display='none'">
+                            <span>${match.team2}</span>
+                        </div>
+                    </div>
+                    <div class="prediction">
+                        <span class="tip ${match.tipClass || ''}">${match.tip || ''}</span>
+                        <span class="odds">Odds: ${match.odds || 'N/A'}</span>
+                    </div>
+                `;
+                
+                resultsContainer.appendChild(matchEl);
+            });
+            
+            // Display JSON output
+            jsonOutput.textContent = JSON.stringify(matches, null, 2);
+        }
+        
+
+    </script>
+</body>
+</html>
